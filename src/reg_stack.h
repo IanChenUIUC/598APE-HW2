@@ -38,12 +38,8 @@ template <typename DataT, int MaxSize> struct stack {
    *       behavior.
    */
   void push(DataT val) {
-    for (int i = MaxSize - 1; i >= 0; --i) {
-      if (elements_ == i) {
-        ++elements_;
-        regs_[i] = val;
-      }
-    }
+    if (!full())
+      regs_[elements_++] = val;
   }
 
   /**
@@ -57,16 +53,7 @@ template <typename DataT, int MaxSize> struct stack {
    *       designed this way. Trying to pop beyond the bottom of the stack leads
    *       to all sorts of incorrect behavior.
    */
-  DataT pop() {
-    for (int i = 0; i < MaxSize; ++i) {
-      if (elements_ == (i + 1)) {
-        elements_--;
-        return regs_[i];
-      }
-    }
-
-    return DataT(0);
-  }
+  DataT pop() { return empty() ? DataT(0) : regs_[--elements_]; }
 
 private:
   int elements_;
