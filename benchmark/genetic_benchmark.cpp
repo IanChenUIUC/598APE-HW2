@@ -205,7 +205,7 @@ void insertionSortPrograms(genetic::program *programs, int size) {
   }
 }
 
-void run_symbolic_regression(const std::string &dataset_file) {
+void run_symbolic_regression(const std::string &dataset_file, uint32_t seed) {
   std::cout << "\n;;===== Symbolic Regression Benchmark =====\n" << std::endl;
   std::cout << "(provide best-program-1 best-program-2)\n";
   // Initialize ctimer for end-to-end timing
@@ -270,7 +270,7 @@ void run_symbolic_regression(const std::string &dataset_file) {
   params.p_hoist_mutation = 0.01f;
   params.p_point_mutation = 0.01f;
   params.max_samples = 1.0f;        // Use all samples
-  params.random_state = 2025000000; // For reproducibility
+  params.random_state = seed;
 
   // Running the symbolic regression
   std::cout << ";;Training symbolic regressor with " << params.population_size
@@ -344,7 +344,8 @@ void run_symbolic_regression(const std::string &dataset_file) {
   delete[] final_programs;
 }
 
-void run_symbolic_classification(const std::string &dataset_file) {
+void run_symbolic_classification(const std::string &dataset_file,
+                                 uint32_t seed) {
   std::cout << "\n;;===== Symbolic Classification Benchmark =====\n"
             << std::endl;
   std::cout << "(provide best-program-1 best-program-2)\n";
@@ -413,7 +414,7 @@ void run_symbolic_classification(const std::string &dataset_file) {
   params.p_hoist_mutation = 0.01f;
   params.p_point_mutation = 0.01f;
   params.max_samples = 1.0f;  // Use all samples
-  params.random_state = 2025; // For reproducibility
+  params.random_state = seed;
 
   // Running the symbolic classification
   std::cout << ";;Training symbolic classifier with " << params.population_size
@@ -487,7 +488,8 @@ void run_symbolic_classification(const std::string &dataset_file) {
   delete[] final_programs;
 }
 
-void run_symbolic_reconstruction(const std::string &png_file, int K) {
+void run_symbolic_reconstruction(const std::string &png_file, int K,
+                                 uint32_t seed) {
   if (K < 1) {
     throw std::invalid_argument("K must be positive");
   }
@@ -569,7 +571,7 @@ void run_symbolic_reconstruction(const std::string &png_file, int K) {
   params.max_samples = 1.0f;
   // MSE cannot be negative: always run the fixed generation budget.
   params.stopping_criteria = -1.0f;
-  const uint32_t base_seed = 2025000000;
+  const uint32_t base_seed = seed;
 
   const char *channel_names[] = {"red", "green", "blue"};
   const std::pair<std::vector<float>, std::vector<float>> *channel_splits[] = {
@@ -658,11 +660,12 @@ void run_symbolic_reconstruction(const std::string &png_file, int K) {
 
 int main(int argc, char *argv[]) {
   try {
-    if (argc < 2) {
+    if (argc < 2 || argc > 3) {
       throw std::invalid_argument(
           "Usage: genetic_benchmark "
-          "{diabetes|cancer|housing|silk-wave|square-wave}");
+          "{diabetes|cancer|housing|silk-wave|square-wave} [seed]");
     }
+    uint32_t seed = argc > 2 ? std::stoul(argv[2]) : 0;
     std::cout << "#lang racket\n";
     // Default datasets
     std::string regression_dataset = "benchmark/diabetes.csv";
@@ -674,21 +677,15 @@ int main(int argc, char *argv[]) {
     std::string arg_dset(argv[1]);
 
     if (arg_dset == "diabetes") {
-      run_symbolic_regression(regression_dataset);
+      run_symbolic_regression(regression_dataset, seed);
     } else if (arg_dset == "cancer") {
-      run_symbolic_classification(classification_dataset);
+      run_symbolic_classification(classification_dataset, seed);
     } else if (arg_dset == "housing") {
-      run_symbolic_regression(housing_dataset);
+      run_symbolic_regression(housing_dataset, seed);
     } else if (arg_dset == "silk-wave") {
-      if (argc != 2) {
-        throw std::invalid_argument("Usage: genetic_benchmark silk-wave");
-      }
-      run_symbolic_reconstruction(silk_wave, 3);
+      run_symbolic_reconstruction(silk_wave, 3, seed);
     } else if (arg_dset == "square-wave") {
-      if (argc != 2) {
-        throw std::invalid_argument("Usage: genetic_benchmark square-wave");
-      }
-      run_symbolic_reconstruction(square_wave, 8);
+      run_symbolic_reconstruction(square_wave, 8, seed);
 
     } else {
       throw std::invalid_argument("Unknown benchmark: " + arg_dset);
