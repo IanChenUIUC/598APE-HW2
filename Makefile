@@ -34,6 +34,10 @@ $(BENCH_BIN): $(BENCH_SRC) $(OBJS)
 	@echo "Building benchmark program..."
 	@$(CXX) $(CXXFLAGS) $< $(OBJS) -o $@ 
 
+# Profile a workload
+%.perf: all
+	perf record -F 999 --call-graph dwarf -o $@ ./$(BENCH_BIN) $* > /dev/null
+
 # Clean build files
 clean:
 	@echo "Cleaning build files..."
