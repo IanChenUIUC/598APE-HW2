@@ -11,6 +11,8 @@
 #include <program.h>
 #include <random>
 #include <stack>
+#include <string_view>
+#include <unordered_map>
 
 namespace genetic {
 
@@ -101,10 +103,45 @@ void compute_metric(int n_rows, int n_progs, const float *y,
   }
 }
 
+/** The bytes of a program's nodes; programs are identical when these are. */
+std::string_view node_bytes(const program &p) {
+  return std::string_view(reinterpret_cast<const char *>(p.nodes),
+                          p.len * sizeof(node));
+}
+
+/** `unique[slot[i]]` is the first program with the same nodes as program `i`. */
+void deduplicate(const program_t &progs, const int n_progs,
+                 std::vector<int> &unique, std::vector<int> &slot) {
+  std::unordered_map<std::string_view, int> seen;
+  slot.resize(n_progs);
+  for (int i = 0; i < n_progs; ++i) {
+    auto [it, inserted] =
+        seen.emplace(node_bytes(progs[i]), static_cast<int>(unique.size()));
+    if (inserted)
+      unique.push_back(i);
+    slot[i] = it->second;
+  }
+}
+
 void execute(const program_t &d_progs, const int n_rows, const int n_progs,
              const float *data, float *y_pred) {
-  execute_kernel(d_progs, data, y_pred, static_cast<uint64_t>(n_rows),
-                 static_cast<uint64_t>(n_progs));
+  std::vector<int> unique, slot;
+  deduplicate(d_progs, n_progs, unique, slot);
+
+  const int n_unique = static_cast<int>(unique.size());
+  std::vector<program> distinct;
+  distinct.reserve(n_unique);
+  for (int u : unique)
+    distinct.emplace_back(d_progs[u]);
+
+  std::vector<float> y_unique(static_cast<uint64_t>(n_unique) * n_rows);
+  execute_kernel(distinct.data(), data, y_unique.data(),
+                 static_cast<uint64_t>(n_rows),
+                 static_cast<uint64_t>(n_unique));
+
+  for (int i = 0; i < n_progs; ++i)
+    std::copy_n(y_unique.data() + static_cast<uint64_t>(slot[i]) * n_rows,
+                n_rows, y_pred + static_cast<uint64_t>(i) * n_rows);
 }
 
 void find_fitness(program_t d_prog, float *score, const param &params,
@@ -145,19 +182,39 @@ void set_fitness(program &h_prog, const param &params, const int n_rows,
 }
 
 void set_batched_fitness(int n_progs, std::vector<program> &h_progs,
+                         const std::vector<program> &prev,
                          const param &params, const int n_rows,
                          const float *data, const float *y,
                          const float *sample_weights) {
 
-  std::vector<float> score(n_progs);
+  std::unordered_map<std::string_view, float> cached;
+  for (const program &p : prev)
+    cached.emplace(node_bytes(p), p.raw_fitness_);
 
-  find_batched_fitness(n_progs, h_progs.data(), score.data(), params, n_rows,
+  std::vector<int> misses;
+  for (auto i = 0; i < n_progs; ++i) {
+    auto it = cached.find(node_bytes(h_progs[i]));
+    if (it != cached.end())
+      h_progs[i].raw_fitness_ = it->second;
+    else
+      misses.push_back(i);
+  }
+
+  const int n_misses = static_cast<int>(misses.size());
+  std::vector<program> todo;
+  todo.reserve(n_misses);
+  for (int i : misses)
+    todo.emplace_back(h_progs[i]);
+
+  std::vector<float> score(n_misses);
+
+  find_batched_fitness(n_misses, todo.data(), score.data(), params, n_rows,
                        data, y, sample_weights);
 
   // Update scores on host and device
   // TODO: Find a way to reduce the number of implicit memory transfers
-  for (auto i = 0; i < n_progs; ++i) {
-    h_progs[i].raw_fitness_ = score[i];
+  for (auto m = 0; m < n_misses; ++m) {
+    h_progs[misses[m]].raw_fitness_ = score[m];
   }
 }
 

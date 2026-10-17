@@ -150,6 +150,8 @@ void set_fitness(program_t &d_prog, program &h_prog, const param &params,
  *
  * @param n_progs         Batch size
  * @param h_progs         Host vector of programs corresponding to d_progs
+ * @param prev            Programs already evaluated on the same dataset; a
+ *                        program with identical nodes reuses their fitness
  * @param params          Training hyperparameters
  * @param n_rows          Number of rows in the input dataset
  * @param data            Device pointer to input dataset
@@ -157,6 +159,7 @@ void set_fitness(program_t &d_prog, program &h_prog, const param &params,
  * @param sample_weights  Device pointer to sample weights
  */
 void set_batched_fitness(int n_progs, std::vector<program> &h_progs,
+                         const std::vector<program> &prev,
                          const param &params, const int n_rows,
                          const float *data, const float *y,
                          const float *sample_weights);

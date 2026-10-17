@@ -179,8 +179,8 @@ void cpp_evolve(const std::vector<program> &h_oldprogs,
   }
 
   // Update raw fitness for all programs
-  set_batched_fitness(n_progs, h_nextprogs, params, n_samples, data, y,
-                      sample_weights);
+  set_batched_fitness(n_progs, h_nextprogs, h_oldprogs, params, n_samples, data,
+                      y, sample_weights);
 }
 
 float param::p_reproduce() const {
