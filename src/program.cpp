@@ -103,46 +103,6 @@ void compute_metric(int n_rows, int n_progs, const float *y,
   }
 }
 
-/** Folds every subtree without a variable into a constant. */
-void constant_fold(const program &prog, program &folded) {
-  std::vector<node> out;
-  std::vector<bool> is_const;
-  for (int i = prog.len - 1; i >= 0; --i) {
-    const node &n = prog.nodes[i];
-    if (detail::is_terminal(n.t)) {
-      out.push_back(n);
-      is_const.push_back(n.t == node::type::constant);
-      continue;
-    }
-    int ar = detail::arity(n.t);
-    bool all_const = true;
-    for (int k = 0; k < ar; ++k) {
-      all_const = all_const && is_const.back();
-      is_const.pop_back();
-    }
-    if (all_const) {
-      float in[2] = {0.0f, 0.0f};
-      for (int k = 0; k < ar; ++k) {
-        in[k] = out.back().u.val;
-        out.pop_back();
-      }
-      out.push_back(node(detail::evaluate_node(n, nullptr, 0, 0, in)));
-    } else {
-      out.push_back(n);
-    }
-    is_const.push_back(all_const);
-  }
-
-  folded.len = static_cast<int>(out.size());
-  folded.depth = prog.depth;
-  folded.raw_fitness_ = prog.raw_fitness_;
-  folded.metric = prog.metric;
-  folded.mut_type = prog.mut_type;
-  delete[] folded.nodes;
-  folded.nodes = new node[folded.len];
-  std::reverse_copy(out.begin(), out.end(), folded.nodes);
-}
-
 /** The bytes of a program's nodes; programs are identical when these are. */
 std::string_view node_bytes(const program &p) {
   return std::string_view(reinterpret_cast<const char *>(p.nodes),
@@ -169,12 +129,13 @@ void execute(const program_t &d_progs, const int n_rows, const int n_progs,
   deduplicate(d_progs, n_progs, unique, slot);
 
   const int n_unique = static_cast<int>(unique.size());
-  std::vector<program> folded(n_unique);
-  for (int u = 0; u < n_unique; ++u)
-    constant_fold(d_progs[unique[u]], folded[u]);
+  std::vector<program> distinct;
+  distinct.reserve(n_unique);
+  for (int u : unique)
+    distinct.emplace_back(d_progs[u]);
 
   std::vector<float> y_unique(static_cast<uint64_t>(n_unique) * n_rows);
-  execute_kernel(folded.data(), data, y_unique.data(),
+  execute_kernel(distinct.data(), data, y_unique.data(),
                  static_cast<uint64_t>(n_rows),
                  static_cast<uint64_t>(n_unique));
 
