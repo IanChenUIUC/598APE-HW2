@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <fitness.h>
+#include <jit.h>
 #include <node.h>
 #include <numeric>
 #include <program.h>
@@ -16,17 +17,12 @@
 
 namespace genetic {
 
-/**
- * Execution kernel for a single program. We assume that the input data
- * is stored in column major format.
- */
-template <int MaxSize = MAX_STACK_SIZE>
 void execute_kernel(const program_t d_progs, const float *data, float *y_pred,
                     const uint64_t n_rows, const uint64_t n_progs) {
   for (uint64_t pid = 0; pid < n_progs; ++pid) {
     for (uint64_t row_id = 0; row_id < n_rows; ++row_id) {
 
-      stack<float, MaxSize> eval_stack;
+      stack<float, MAX_STACK_SIZE> eval_stack;
       program_t curr_p = d_progs + pid; // Current program
 
       int end = curr_p->len - 1;
@@ -135,9 +131,8 @@ void execute(const program_t &d_progs, const int n_rows, const int n_progs,
     distinct.emplace_back(d_progs[u]);
 
   std::vector<float> y_unique(static_cast<uint64_t>(n_unique) * n_rows);
-  execute_kernel(distinct.data(), data, y_unique.data(),
-                 static_cast<uint64_t>(n_rows),
-                 static_cast<uint64_t>(n_unique));
+  jit::execute(distinct.data(), data, y_unique.data(),
+               static_cast<uint64_t>(n_rows), static_cast<uint64_t>(n_unique));
 
   for (int i = 0; i < n_progs; ++i)
     std::copy_n(y_unique.data() + static_cast<uint64_t>(slot[i]) * n_rows,

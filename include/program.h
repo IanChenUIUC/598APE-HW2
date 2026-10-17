@@ -78,6 +78,19 @@ void execute(const program_t &d_progs, const int n_rows, const int n_progs,
              const float *data, float *y_pred);
 
 /**
+ * Evaluate programs with the interpreter. We assume that the input data is
+ * stored in column major format.
+ *
+ * @param d_progs    Pointer to programs
+ * @param data       Pointer to input dataset (in col-major format)
+ * @param y_pred     Pointer to output of program evaluation
+ * @param n_rows     Number of rows in the input dataset
+ * @param n_progs    Total number of programs being evaluated
+ */
+void execute_kernel(const program_t d_progs, const float *data, float *y_pred,
+                    const uint64_t n_rows, const uint64_t n_progs);
+
+/**
  * @brief Compute the loss based on the metric specified in the training
  * hyperparameters. It performs a batched computation for all programs in one
  * shot.
