@@ -32,12 +32,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("id")
     parser.add_argument("--workloads", nargs="+", choices=list(workloads),
-                        default=["diabetes"])
+                        default=list(workloads))
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--output")
     args = parser.parse_args()
 
-    rows = []
+    file = open(args.output, "a", newline="") if args.output else sys.stdout
+    writer = csv.writer(file)
+    if file is sys.stdout or file.tell() == 0:
+        writer.writerow(["commit", "workload", "seed", "time", "quality"])
+        file.flush()
+
     for workload in args.workloads:
         for run in range(1, args.runs + 1):
             seed = run * 1000000009 % 2**32
@@ -47,14 +52,8 @@ def main():
             ).stdout
             time = search(timer, output, workload, seed)
             quality = search(workloads[workload], output, workload, seed)
-            print("%s %d/%d %.6f" % (workload, run, args.runs, time), file=sys.stderr)
-            rows.append([args.id, workload, seed, time, quality])
-
-    file = open(args.output, "a", newline="") if args.output else sys.stdout
-    writer = csv.writer(file)
-    if file is sys.stdout or file.tell() == 0:
-        writer.writerow(["commit", "workload", "seed", "time", "quality"])
-    writer.writerows(rows)
+            writer.writerow([args.id, workload, seed, time, quality])
+            file.flush()
 
 
 if __name__ == "__main__":
