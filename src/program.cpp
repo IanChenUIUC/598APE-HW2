@@ -3,9 +3,6 @@
 #include "node_detail.h"
 #include "philox_engine.h"
 #include "reg_stack.h"
-#ifdef USE_CHEZ
-#include <chez.h>
-#endif
 #include <algorithm>
 #include <cstdint>
 #include <fitness.h>
@@ -138,15 +135,9 @@ void execute(const program_t &d_progs, const int n_rows, const int n_progs,
     distinct.emplace_back(d_progs[u]);
 
   std::vector<float> y_unique(static_cast<uint64_t>(n_unique) * n_rows);
-#ifdef USE_CHEZ
-  chez::execute(distinct.data(), data, y_unique.data(),
-                static_cast<uint64_t>(n_rows),
-                static_cast<uint64_t>(n_unique));
-#else
   execute_kernel(distinct.data(), data, y_unique.data(),
                  static_cast<uint64_t>(n_rows),
                  static_cast<uint64_t>(n_unique));
-#endif
 
   for (int i = 0; i < n_progs; ++i)
     std::copy_n(y_unique.data() + static_cast<uint64_t>(slot[i]) * n_rows,

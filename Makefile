@@ -7,25 +7,8 @@ INC_DIR := include
 OBJ_DIR := obj
 BENCH_DIR := benchmark
 
-# Chez Scheme
-CHEZ_DIR := ChezScheme
-CHEZ_MACHINE := ta6le
-CHEZ_LIB := $(CHEZ_DIR)/$(CHEZ_MACHINE)/boot/$(CHEZ_MACHINE)
-
-# Evaluate programs with Chez Scheme instead of the interpreter
-CHEZ ?= 0
-
 # Find all cpp files in src directory
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
-
-ifeq ($(CHEZ),1)
-CXXFLAGS += -DUSE_CHEZ -DCHEZ_BOOT='"$(CHEZ_LIB)"' -I $(CHEZ_LIB)
-LDLIBS := $(CHEZ_LIB)/libkernel.a $(CHEZ_DIR)/$(CHEZ_MACHINE)/zlib/libz.a \
-	$(CHEZ_DIR)/$(CHEZ_MACHINE)/lz4/lib/liblz4.a -lm -ldl -lrt -lpthread -rdynamic
-else
-SRCS := $(filter-out $(SRC_DIR)/chez.cpp,$(SRCS))
-endif
-
 # Generate object file names
 OBJS := $(SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 
@@ -34,7 +17,7 @@ BENCH_SRC := $(BENCH_DIR)/genetic_benchmark.cpp
 BENCH_BIN := genetic_benchmark
 
 # Default target
-all: directories $(CHEZ_LIB)/libkernel.a $(BENCH_BIN)
+all: directories $(BENCH_BIN) 
 
 # Create necessary directories
 directories:
@@ -49,15 +32,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 # build benchmark lib 
 $(BENCH_BIN): $(BENCH_SRC) $(OBJS)
 	@echo "Building benchmark program..."
-	@$(CXX) $(CXXFLAGS) $< $(OBJS) $(LDLIBS) -o $@
-
-# Build Chez Scheme
-$(CHEZ_LIB)/libkernel.a:
-	cd $(CHEZ_DIR) && ./configure --as-is --disable-x11 --disable-curses && $(MAKE)
-
-ifeq ($(CHEZ),1)
-$(OBJ_DIR)/chez.o $(BENCH_BIN): $(CHEZ_LIB)/libkernel.a
-endif
+	@$(CXX) $(CXXFLAGS) $< $(OBJS) -o $@ 
 
 # Profile a workload
 %.perf: all
