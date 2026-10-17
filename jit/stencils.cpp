@@ -35,20 +35,12 @@ void kill(v8 (&r)[8], int live) {
     r[j] = _mm256_undefined_ps();
 }
 
-template <typename F> v8 lanes(v8 a, F f) {
-  alignas(32) float v[8];
-  _mm256_store_ps(v, a);
-  for (float &e : v)
-    e = f(e);
-  return _mm256_load_ps(v);
-}
-
-/** The libm function patched into the hole, called through a 64-bit address
- * since it may be out of range of a relative call. */
-float (*libm())(float) {
+/** The libmvec function patched into the hole, called through a 64-bit
+ * address since it may be out of range of a relative call. */
+v8 (*libm())(v8) {
   uintptr_t f = hole();
   asm("" : "+r"(f));
-  return reinterpret_cast<float (*)(float)>(f);
+  return reinterpret_cast<v8 (*)(v8)>(f);
 }
 
 } // namespace
@@ -87,17 +79,18 @@ struct sqrt {
   static v8 apply(v8 a) { return _mm256_sqrt_ps(abs::apply(a)); }
 };
 struct sin {
-  static v8 apply(v8 a) { return lanes(a, libm()); }
+  static v8 apply(v8 a) { return libm()(a); }
 };
 struct cos {
-  static v8 apply(v8 a) { return lanes(a, libm()); }
+  static v8 apply(v8 a) { return libm()(a); }
 };
+/** 0 when |a| < MIN_VAL, otherwise log |a|. */
 struct log {
   static v8 apply(v8 a) {
-    auto f = libm();
-    return lanes(abs::apply(a), [f](float v) {
-      return v < genetic::detail::MIN_VAL ? 0.0f : f(v);
-    });
+    v8 v = abs::apply(a);
+    v8 small = _mm256_cmp_ps(v, _mm256_set1_ps(genetic::detail::MIN_VAL),
+                             _CMP_LT_OQ);
+    return _mm256_andnot_ps(small, libm()(v));
   }
 };
 

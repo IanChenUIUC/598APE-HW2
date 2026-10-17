@@ -13,6 +13,10 @@
 #include <unistd.h>
 #include <vector>
 
+/** libmvec's AVX2 variants of sinf, cosf and logf; only their addresses are
+ * taken. */
+extern "C" void _ZGVdN8v_sinf(), _ZGVdN8v_cosf(), _ZGVdN8v_logf();
+
 namespace genetic {
 namespace jit {
 namespace {
@@ -72,7 +76,7 @@ private:
   size_t size_ = 0;
 };
 
-uint64_t address(float (*f)(float)) { return reinterpret_cast<uint64_t>(f); }
+uint64_t address(void (*f)()) { return reinterpret_cast<uint64_t>(f); }
 
 /** Compiles one program into a buffer. */
 class compiler {
@@ -179,11 +183,11 @@ private:
     case node::type::sqrt:
       return put(stencils::unary_sqrt[k], 0);
     case node::type::sin:
-      return put(stencils::call_sin[k], address(sinf));
+      return put(stencils::call_sin[k], address(_ZGVdN8v_sinf));
     case node::type::cos:
-      return put(stencils::call_cos[k], address(cosf));
+      return put(stencils::call_cos[k], address(_ZGVdN8v_cosf));
     case node::type::log:
-      return put(stencils::call_log[k], address(logf));
+      return put(stencils::call_log[k], address(_ZGVdN8v_logf));
     default:
       abort();
     }

@@ -7,6 +7,9 @@ INC_DIR := include
 OBJ_DIR := obj
 BENCH_DIR := benchmark
 
+# Vector math (libmvec) for the JIT's sin, cos and log
+LDLIBS := -lmvec
+
 # Find all cpp files in src directory
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 # Generate object file names
@@ -48,7 +51,7 @@ $(OBJ_DIR)/jit.o: $(JIT_DIR)/stencils.h
 # build benchmark lib
 $(BENCH_BIN): $(BENCH_SRC) $(OBJS)
 	@echo "Building benchmark program..."
-	@$(CXX) $(CXXFLAGS) $< $(OBJS) -o $@ 
+	@$(CXX) $(CXXFLAGS) $< $(OBJS) $(LDLIBS) -o $@
 
 # Profile a workload
 %.perf: all
