@@ -23,4 +23,5 @@ RUN racket -e '(require racket/draw) (unless (send (make-bitmap 2 2) save-file "
     && test -s /tmp/racket-smoke.png \
     && rm /tmp/racket-smoke.png
 
+ENV PATH=/usr/lib/llvm-19/bin:$PATH
 ENV DEBIAN_FRONTEND=
