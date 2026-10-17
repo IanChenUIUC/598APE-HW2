@@ -38,7 +38,14 @@ struct program {
    *
    * @param src
    */
-  explicit program(const program &src);
+  program(const program &src);
+
+  /**
+   * @brief Move constructor, taking over the nodes of `src`
+   *
+   * @param src
+   */
+  program(program &&src) noexcept;
 
   /**
    * @brief assignment operator
@@ -48,6 +55,15 @@ struct program {
    * @return current program reference
    */
   program &operator=(const program &src);
+
+  /**
+   * @brief Move assignment operator, taking over the nodes of `src`
+   *
+   * @param[in] src source program to be moved
+   *
+   * @return current program reference
+   */
+  program &operator=(program &&src) noexcept;
 
   node *nodes;
   /** total number of nodes in this AST */

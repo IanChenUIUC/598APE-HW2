@@ -78,6 +78,24 @@ program &program::operator=(const program &src) {
   return *this;
 }
 
+program::program(program &&src) noexcept
+    : nodes(src.nodes), len(src.len), depth(src.depth),
+      raw_fitness_(src.raw_fitness_), metric(src.metric),
+      mut_type(src.mut_type) {
+  src.nodes = nullptr;
+  src.len = 0;
+}
+
+program &program::operator=(program &&src) noexcept {
+  std::swap(nodes, src.nodes);
+  len = src.len;
+  depth = src.depth;
+  raw_fitness_ = src.raw_fitness_;
+  metric = src.metric;
+  mut_type = src.mut_type;
+  return *this;
+}
+
 void compute_metric(int n_rows, int n_progs, const float *y,
                     const float *y_pred, const float *w, float *score,
                     const param &params) {
